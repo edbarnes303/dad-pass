@@ -1,0 +1,5 @@
+backend/.DS_Store
+.vscode/
+backend/package.*.yaml
+.DS_Store
+backend/src/__pycache__/

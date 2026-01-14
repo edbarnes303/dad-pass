@@ -1,0 +1,149 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'Dad Pass service'
+
+Parameters:
+    StageName:
+        Type: String
+        Default: dev
+        AllowedValues:
+            - dev
+            - prod
+            - local
+            - staging
+        Description: The environment to be run on (typically local, dev, staging or prod)
+
+    ServiceName:
+        Type: String
+        Description: The service name
+
+    ServicePath:
+        Type: String
+        Description: 'The path for this service ex: /participants'
+
+Mappings:
+    Environment:
+        dev:
+            LogLevel: 'DEBUG'
+
+        prod:
+            LogLevel: 'INFO'
+
+Resources:
+    LambdaFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            FunctionName: !Sub ${ServiceName}-${StageName}
+            Handler: lambda_function.handler
+            Runtime: python3.12
+            CodeUri: ./src
+            Timeout: 35
+            MemorySize: 128
+            Tracing: Active
+            VpcConfig:
+                SecurityGroupIds:
+                    - !Sub '{{resolve:ssm:AppSecurityGroup}}'
+                SubnetIds:
+                    - !Sub '{{resolve:ssm:private-subnet-1}}'
+                    - !Sub '{{resolve:ssm:private-subnet-2}}'
+                    - !Sub '{{resolve:ssm:private-subnet-3}}'
+            Policies:
+                - Statement:
+                      - Effect: Allow
+                        Action:
+                            - logs:CreateLogGroup
+                            - logs:CreateLogStream
+                            - logs:PutLogEvents
+                        Resource: arn:aws:logs:*:*:*
+
+            Environment:
+                Variables:
+                    STAGE: !Ref StageName
+                    LOG_LEVEL: !FindInMap [Environment, !Ref StageName, LogLevel]
+                    POWERTOOLS_SERVICE_NAME: !Sub ${ServiceName}
+
+    # API Gateway (REST stuff) starts here
+
+    # To keep things simple we'll define the API Gateway in just this service and reference it from other services if needed.
+    APIGateway:
+        Type: AWS::ApiGatewayV2::Api
+        Properties:
+            Name: !Sub dad-pass-rest-api-${StageName}
+            ProtocolType: HTTP
+            # Target: "https://this.forces.creation.of.a.default.stage"
+
+    APIGatewayLambdaPermission:
+        Type: AWS::Lambda::Permission
+        Properties:
+            Action: lambda:InvokeFunction
+            FunctionName: !Ref LambdaFunction
+            Principal: apigateway.amazonaws.com
+            SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${APIGateway}/*/*/*'
+        DependsOn:
+            - APIGateway
+            - LambdaFunction
+
+    APIGatewayStage:
+        Type: AWS::ApiGatewayV2::Stage
+        Properties:
+            StageName: $default
+            Description: Default Stage
+            AutoDeploy: true
+            ApiId: !Ref APIGateway
+
+    ApiGatewayV2Integration:
+        Type: AWS::ApiGatewayV2::Integration
+        Properties:
+            ApiId: !Ref APIGateway
+            IntegrationType: 'AWS_PROXY'
+            IntegrationUri: !GetAtt LambdaFunction.Arn
+            TimeoutInMillis: 30000
+            PayloadFormatVersion: 2.0
+
+    RestDefaultRoute:
+        Type: AWS::ApiGatewayV2::Route
+        Properties:
+            RouteKey: 'ANY /'
+            ApiId: !Ref APIGateway
+            Target: !Sub 'integrations/${ApiGatewayV2Integration}'
+
+    RouteGetPath:
+        Type: AWS::ApiGatewayV2::Route
+        Properties:
+            RouteKey: !Sub 'GET /${ServicePath}/{proxy+}'
+            ApiId: !Ref APIGateway
+            Target: !Sub 'integrations/${ApiGatewayV2Integration}'
+
+    RouteGetNoPath:
+        Type: AWS::ApiGatewayV2::Route
+        Properties:
+            RouteKey: !Sub 'GET /${ServicePath}'
+            ApiId: !Ref APIGateway
+            Target: !Sub 'integrations/${ApiGatewayV2Integration}'
+
+    RoutePostPath:
+        Type: 'AWS::ApiGatewayV2::Route'
+        Properties:
+            RouteKey: !Sub 'POST /${ServicePath}/{proxy+}'
+            ApiId: !Ref APIGateway
+            Target: !Sub 'integrations/${ApiGatewayV2Integration}'
+
+    RoutePostNoPath:
+        Type: 'AWS::ApiGatewayV2::Route'
+        Properties:
+            RouteKey: !Sub 'POST /${ServicePath}'
+            ApiId: !Ref APIGateway
+            Target: !Sub 'integrations/${ApiGatewayV2Integration}'
+
+Outputs:
+    RestAPIOutput:
+        Description: 'The url of the rest api'
+        Value: !GetAtt APIGateway.ApiEndpoint
+        Export:
+            Name: !Sub ${AWS::StackName}-RestApiUrl-${StageName}
+
+    RestAPIId:
+        Description: 'The ID of the REST API Gateway'
+        Value: !Ref APIGateway
+        Export:
+            Name: !Sub 'api-config-${StageName}-RestApiId'
