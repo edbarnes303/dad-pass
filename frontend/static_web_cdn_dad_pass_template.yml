@@ -1,0 +1,93 @@
+Parameters:
+    RootDomainName:
+        Description: Domain name for your website (example.com)
+        Type: String
+
+    CertificateArn:
+        Description: Certificate ARN for certificate created for domain
+        Type: String
+        Default: none
+
+Resources:
+    RootBucket:
+        Type: AWS::S3::Bucket
+        DeletionPolicy: Retain
+        Properties:
+            BucketName: !Sub 'dadpass.com'
+            PublicAccessBlockConfiguration:
+                BlockPublicAcls: false
+            OwnershipControls:
+                Rules:
+                    - ObjectOwnership: ObjectWriter
+            WebsiteConfiguration:
+                IndexDocument: index.html
+
+    CDNOriginIdentity:
+        Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+        Properties:
+            CloudFrontOriginAccessIdentityConfig:
+                Comment: !Sub 'Cloudfront Origin identity for ${RootDomainName}'
+
+    RootBucketPolicy:
+        Type: AWS::S3::BucketPolicy
+        Properties:
+            Bucket: !Ref RootBucket
+            PolicyDocument:
+                Statement:
+                    - Action:
+                          - s3:GetObject
+                      Effect: Allow
+                      Resource:
+                          - !Sub arn:aws:s3:::${RootBucket}
+                          - !Sub arn:aws:s3:::${RootBucket}/*
+                      Principal:
+                          CanonicalUser: !GetAtt CDNOriginIdentity.S3CanonicalUserId
+
+    WebsiteCDN:
+        Type: 'AWS::CloudFront::Distribution'
+        Properties:
+            DistributionConfig:
+                Comment: !Sub 'CDN for S3-backed website ${RootDomainName}'
+                Aliases:
+                    - !Ref RootDomainName
+                DefaultCacheBehavior:
+                    ForwardedValues:
+                        QueryString: 'true'
+                    TargetOriginId: !Sub 'S3-origin-${RootBucket}'
+                    ViewerProtocolPolicy: redirect-to-https
+                DefaultRootObject: index.html
+                Enabled: True
+                Origins:
+                    - DomainName: !GetAtt RootBucket.RegionalDomainName
+                      Id: !Sub 'S3-origin-${RootBucket}'
+                      S3OriginConfig:
+                          OriginAccessIdentity: !Sub 'origin-access-identity/cloudfront/${CDNOriginIdentity}'
+                PriceClass: PriceClass_100
+                ViewerCertificate:
+                    AcmCertificateArn: !Ref CertificateArn
+                    MinimumProtocolVersion: TLSv1.2_2018
+                    SslSupportMethod: sni-only
+                CustomErrorResponses:
+                    - ErrorCode: 404
+                      ResponseCode: 200
+                      ResponsePagePath: /index.html
+                    - ErrorCode: 403
+                      ResponseCode: 200
+                      ResponsePagePath: /index.html
+
+    DNSRecordSet:
+        Type: AWS::Route53::RecordSetGroup
+        Properties:
+            HostedZoneName: !Sub '${RootDomainName}.'
+            Comment: Zone apex alias.
+            RecordSets:
+                - Name: !Ref RootDomainName
+                  Type: A
+                  AliasTarget:
+                      HostedZoneId: Z2FDTNDATAQYW2
+                      DNSName: !GetAtt WebsiteCDN.DomainName
+
+Outputs:
+    WebsiteURL:
+        Value: !GetAtt RootBucket.WebsiteURL
+        Description: Prod URL for website hosted on S3

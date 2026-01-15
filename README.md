@@ -18,17 +18,23 @@ This is a serverless application built on AWS using:
 
 -   **AWS Lambda** (Python 3.12) - Backend logic
 -   **API Gateway** (HTTP API) - REST endpoints
+-   **DynamoDB** - Persistent message storage with TTL-based expiration
 -   **AWS SAM** (Serverless Application Model) - Infrastructure as Code
 -   **AWS Lambda Powertools** - Logging and event handling
+-   **CloudFront + S3** - Static frontend hosting
 
-### Current Limitations
+### Current Status
 
-⚠️ **Note**: The current implementation stores messages in-memory within the Lambda function. This means:
+✅ **Completed:**
 
--   Messages are lost when the Lambda function cold-starts
--   Not suitable for production use without persistence (DynamoDB recommended)
--   Fine for demo/testing purposes
--   Fontend is not yet available, comming soon.
+-   Backend API with persistent DynamoDB storage
+-   One-time message retrieval with automatic deletion
+-   TTL-based message expiration
+-   Placeholder frontend structure
+
+🚧 **In Progress:**
+
+-   Building functional frontend UI for message creation and retrieval
 
 ## API Endpoints
 
@@ -189,12 +195,17 @@ dad-pass/
 │   ├── template.yaml           # SAM template
 │   ├── Makefile                # Build/deploy commands
 │   └── run_local.py            # Local testing script
-└── frontend/                   # (Coming soon)
+└── frontend/
+    ├── src/
+    │   └── index.html          # Placeholder frontend
+    ├── static_web_cdn_dad_pass_template.yml  # CloudFront/S3 template
+    └── Makefile                # Frontend deployment commands
 ```
 
 ## Security Considerations
 
--   Messages are currently stored in-memory (ephemeral)
+-   Messages are stored in DynamoDB with encryption at rest
+-   TTL-based automatic expiration for unread messages
 -   VPC configuration restricts Lambda network access
 -   API Gateway uses IAM permissions for Lambda invocation
 -   CloudWatch logging enabled for audit trails
@@ -202,10 +213,8 @@ dad-pass/
 
 ## Future Enhancements
 
--   [ ] DynamoDB persistence for messages
--   [ ] TTL-based message expiration
+-   [ ] Complete functional frontend UI
 -   [ ] Message encryption at rest
--   [ ] Frontend UI for easy message creation/retrieval
 -   [ ] Containerized version (Docker/ECS)
 
 ## Cost Estimate

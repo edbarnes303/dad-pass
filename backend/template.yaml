@@ -30,23 +30,36 @@ Mappings:
             LogLevel: 'INFO'
 
 Resources:
+    MessagesTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+            TableName: !Sub ${ServiceName}-messages-${StageName}
+            BillingMode: PAY_PER_REQUEST
+            AttributeDefinitions:
+                - AttributeName: messageKey
+                  AttributeType: S
+            KeySchema:
+                - AttributeName: messageKey
+                  KeyType: HASH
+            TimeToLiveSpecification:
+                Enabled: true
+                AttributeName: ttl
+            Tags:
+                - Key: Environment
+                  Value: !Ref StageName
+                - Key: Service
+                  Value: !Ref ServiceName
+
     LambdaFunction:
         Type: AWS::Serverless::Function
         Properties:
             FunctionName: !Sub ${ServiceName}-${StageName}
             Handler: lambda_function.handler
-            Runtime: python3.12
+            Runtime: python3.14
             CodeUri: ./src
             Timeout: 35
             MemorySize: 128
             Tracing: Active
-            VpcConfig:
-                SecurityGroupIds:
-                    - !Sub '{{resolve:ssm:AppSecurityGroup}}'
-                SubnetIds:
-                    - !Sub '{{resolve:ssm:private-subnet-1}}'
-                    - !Sub '{{resolve:ssm:private-subnet-2}}'
-                    - !Sub '{{resolve:ssm:private-subnet-3}}'
             Policies:
                 - Statement:
                       - Effect: Allow
@@ -55,12 +68,21 @@ Resources:
                             - logs:CreateLogStream
                             - logs:PutLogEvents
                         Resource: arn:aws:logs:*:*:*
+                      - Effect: Allow
+                        Action:
+                            - dynamodb:GetItem
+                            - dynamodb:PutItem
+                            - dynamodb:DeleteItem
+                            - dynamodb:Query
+                            - dynamodb:Scan
+                        Resource: !GetAtt MessagesTable.Arn
 
             Environment:
                 Variables:
                     STAGE: !Ref StageName
                     LOG_LEVEL: !FindInMap [Environment, !Ref StageName, LogLevel]
                     POWERTOOLS_SERVICE_NAME: !Sub ${ServiceName}
+                    MESSAGES_TABLE_NAME: !Ref MessagesTable
 
     # API Gateway (REST stuff) starts here
 

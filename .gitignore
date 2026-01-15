@@ -3,3 +3,4 @@ backend/.DS_Store
 backend/package.*.yaml
 .DS_Store
 backend/src/__pycache__/
+backend/.aws-sam
