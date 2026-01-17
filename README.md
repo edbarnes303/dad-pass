@@ -171,7 +171,7 @@ make tail
 
 Key configuration in [template.yaml](backend/template.yaml):
 
--   **Runtime**: Python 3.12
+-   **Runtime**: Python 3.14
 -   **Timeout**: 35 seconds
 -   **Memory**: 128 MB
 -   **VPC**: Configured to use existing security groups and subnets (via SSM parameters)

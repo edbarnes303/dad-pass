@@ -1,6 +1,56 @@
-backend/.DS_Store
-.vscode/
-backend/package.*.yaml
+# macOS
 .DS_Store
-backend/src/__pycache__/
-backend/.aws-sam
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+.coverage
+htmlcov/
+venv/
+env/
+ENV/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+out/
+*.log
+
+# AWS
+.aws-sam/
+package.*.yaml
+samconfig.toml
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# TypeScript
+*.tsbuildinfo

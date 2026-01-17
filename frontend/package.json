@@ -1,0 +1,25 @@
+{
+    "name": "dadpass-frontend",
+    "private": true,
+    "version": "1.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --port 3000",
+        "build": "tsc -b && vite build",
+        "preview": "vite preview",
+        "deploy": "pnpm build && aws s3 sync dist/ s3://dadpass.com/ --delete && aws cloudfront create-invalidation --distribution-id $(aws cloudfront list-distributions --query \"DistributionList.Items[?Aliases.Items[?contains(@, 'dadpass.com')]].Id\" --output text) --paths \"/*\"",
+        "update-stack": "aws cloudformation deploy --region us-east-2 --template static_web_cdn_dad_pass_template.yml --stack-name dad-pass-static-web-us-east-2 --parameter-overrides RootDomainName=dadpass.com CertificateArn=arn:aws:acm:us-east-1:778590694111:certificate/56181d39-41a9-43fa-b007-3c5a432427f0 --tags Repo=https://github.com/edbarnes303/dad-pass"
+    },
+    "dependencies": {
+        "react": "^18.3.1",
+        "react-dom": "^18.3.1",
+        "react-router-dom": "^6.28.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18.3.12",
+        "@types/react-dom": "^18.3.1",
+        "@vitejs/plugin-react": "^4.3.3",
+        "typescript": "~5.6.3",
+        "vite": "^6.0.1"
+    }
+}

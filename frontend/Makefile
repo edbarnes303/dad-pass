@@ -7,6 +7,18 @@ AWS_PAGER=
 
 .EXPORT_ALL_VARIABLES:
 
+# Install dependencies
+install:
+	pnpm install
+
+# Run development server
+dev:
+	pnpm dev
+
+# Build for production
+build:
+	pnpm build
+
 # DO NOT copy and paste without changing stack-name and RootDomainName
 update-dadpass:
     # Deploy or update s3 static website dadpass.com
@@ -17,7 +29,9 @@ update-dadpass:
 	--tags \
 	Repo=https://github.com/anuvi720/infra/tree/main/s3_web
 
-publish:
-	# Sync src/ contents to S3 bucket
-	aws s3 sync src/ s3://dadpass.com/ --delete
+# Build and deploy to S3
+publish: build
+	# Sync dist/ contents to S3 bucket
+	aws s3 sync dist/ s3://dadpass.com/ --delete
+
 

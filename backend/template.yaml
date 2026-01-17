@@ -92,6 +92,17 @@ Resources:
         Properties:
             Name: !Sub dad-pass-rest-api-${StageName}
             ProtocolType: HTTP
+            CorsConfiguration:
+                AllowOrigins:
+                    - '*'
+                AllowMethods:
+                    - GET
+                    - POST
+                    - OPTIONS
+                AllowHeaders:
+                    - Content-Type
+                    - Accept
+                MaxAge: 300
             # Target: "https://this.forces.creation.of.a.default.stage"
 
     APIGatewayLambdaPermission:
