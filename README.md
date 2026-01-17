@@ -12,7 +12,7 @@ DadPass allows you to share sensitive information (like passwords) securely by:
 
 Perfect for those "Dad, what's the WiFi password?" moments without sending credentials in plain text over messaging apps.
 
-![DadPass Screenshot](dadpassss.png)
+<img src="dadpassss.png" alt="DadPass Screenshot" width="50%" />
 
 ## Architecture
 
