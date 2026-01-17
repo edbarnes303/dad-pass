@@ -148,6 +148,10 @@ export function CreateMessage() {
                     </div>
                 )}
             </div>
+
+            <footer className="create-message__footer">
+                (Created by a dad who was tired of his kids asking for the Netflix password in plain text)
+            </footer>
         </div>
     );
 }

@@ -115,6 +115,16 @@
     margin-top: var(--space-md);
 }
 
+.create-message__footer {
+    margin-top: var(--space-xl);
+    padding: 0 var(--space-md);
+    text-align: center;
+    font-size: var(--font-size-sm);
+    color: var(--color-text-muted);
+    font-style: italic;
+    max-width: var(--max-width-content);
+}
+
 /* Responsive */
 @media (min-width: 640px) {
     .create-message {

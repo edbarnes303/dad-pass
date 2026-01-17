@@ -1,6 +1,6 @@
 # DadPass 🔑
 
-DadPass is a simple cheap (almost free) to run service I built because my kids kept asking me to send them the Netflix password (and other passwords) in plain text. It is intended for tech dads and tech moms to copy and deploy on their own AWS account, however everyone is welcome to use my deployment so long as you're willing to trust me. I'm also working on a containerized version for tech dads and tech moms who don't roll with serverless.
+DadPass is a simple cheap (almost free) to run service I built because my kids kept asking me to send them the Netflix password (and other passwords) in plain text. It is intended for tech dads and tech moms to copy and deploy on their own AWS account, however everyone is welcome to use my deployment at https://dadpass.com so long as you're willing to trust me. I'm also working on a containerized version for tech dads and tech moms who don't roll with serverless.
 
 ## What It Does
 
@@ -12,6 +12,8 @@ DadPass allows you to share sensitive information (like passwords) securely by:
 
 Perfect for those "Dad, what's the WiFi password?" moments without sending credentials in plain text over messaging apps.
 
+![DadPass Screenshot](dadpassss.png)
+
 ## Architecture
 
 This is a serverless application built on AWS using:
@@ -22,6 +24,7 @@ This is a serverless application built on AWS using:
 -   **AWS SAM** (Serverless Application Model) - Infrastructure as Code
 -   **AWS Lambda Powertools** - Logging and event handling
 -   **CloudFront + S3** - Static frontend hosting
+-   **React + TypeScript** - Modern frontend with Vite build tooling
 
 ### Current Status
 
@@ -30,11 +33,10 @@ This is a serverless application built on AWS using:
 -   Backend API with persistent DynamoDB storage
 -   One-time message retrieval with automatic deletion
 -   TTL-based message expiration
--   Placeholder frontend structure
-
-🚧 **In Progress:**
-
--   Building functional frontend UI for message creation and retrieval
+-   React/TypeScript frontend with Vite
+-   Message creation and retrieval UI with copy-to-clipboard
+-   Toast notifications and loading states
+-   Responsive design with modern CSS
 
 ## API Endpoints
 
@@ -104,6 +106,8 @@ aws s3 mb s3://dad-pass-dev-lambda-artifacts-us-east-2 --region us-east-2
 
 ### 3. Build and Deploy
 
+#### Backend Deployment
+
 Using the Makefile:
 
 ```bash
@@ -117,6 +121,14 @@ This will:
 -   Build the Lambda function
 -   Package it to S3
 -   Deploy via CloudFormation
+
+#### Frontend Deployment
+
+```bash
+cd frontend
+make build  # Build the React app
+make deploy # Deploy to S3 and CloudFront
+```
 
 ### Manual Deployment
 
@@ -144,13 +156,23 @@ sam deploy \
 
 ## Development
 
-### Local Testing
+### Backend Local Testing
 
 Run the Lambda locally:
 
 ```bash
 cd backend
 python run_local.py
+```
+
+### Frontend Local Development
+
+Run the frontend dev server:
+
+```bash
+cd frontend
+pnpm install  # Install dependencies
+pnpm dev      # Start dev server at http://localhost:5173
 ```
 
 ### Integration Tests
@@ -197,8 +219,21 @@ dad-pass/
 │   └── run_local.py            # Local testing script
 └── frontend/
     ├── src/
-    │   └── index.html          # Placeholder frontend
+    │   ├── App.tsx             # Main React component
+    │   ├── main.tsx            # React entry point
+    │   ├── api/
+    │   │   └── dadpass.ts      # API client
+    │   ├── components/         # Reusable components
+    │   │   ├── CopyButton/
+    │   │   ├── Spinner/
+    │   │   └── Toast/
+    │   ├── pages/
+    │   │   ├── CreateMessage/  # Message creation page
+    │   │   └── ViewMessage/    # Message retrieval page
+    │   └── styles/             # Global styles
     ├── static_web_cdn_dad_pass_template.yml  # CloudFront/S3 template
+    ├── vite.config.ts          # Vite configuration
+    ├── package.json            # Frontend dependencies
     └── Makefile                # Frontend deployment commands
 ```
 
@@ -213,9 +248,10 @@ dad-pass/
 
 ## Future Enhancements
 
--   [ ] Complete functional frontend UI
--   [ ] Message encryption at rest
+-   [ ] Message encryption at rest with client-side encryption
 -   [ ] Containerized version (Docker/ECS)
+-   [ ] Optional password protection for messages
+-   [ ] Configurable expiration times
 
 ## Cost Estimate
 
