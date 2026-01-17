@@ -97,14 +97,14 @@
 
 .create-message__link {
     width: 100%;
-    padding: var(--space-md);
+    padding: var(--space-md) var(--space-sm);
     background-color: var(--color-bg-card);
     border: 2px dashed var(--color-border);
     border-radius: var(--radius-md);
     font-family: monospace;
-    font-size: var(--font-size-sm);
-    word-break: keep-all;
-    overflow-wrap: break-word;
+    font-size: 0.8125rem; /* 13px - slightly smaller for mobile */
+    white-space: nowrap;
+    overflow-x: auto;
     user-select: all;
     cursor: text;
     color: var(--color-text);
@@ -140,5 +140,10 @@
     .create-message__submit {
         width: auto;
         flex-shrink: 0;
+    }
+
+    .create-message__link {
+        font-size: var(--font-size-sm); /* 14px on larger screens */
+        padding: var(--space-md); /* 16px padding on larger screens */
     }
 }

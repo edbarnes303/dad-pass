@@ -1,4 +1,4 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { createMessage } from '../../api/dadpass';
 import { CopyButton } from '../../components/CopyButton/CopyButton';
 import { Spinner } from '../../components/Spinner/Spinner';
@@ -22,6 +22,14 @@ export function CreateMessage() {
     const [messageKey, setMessageKey] = useState<string | null>(null);
     const { toasts, showToast, dismissToast } = useToast();
 
+    // Load saved TTL preference from localStorage
+    useEffect(() => {
+        const savedTtl = localStorage.getItem('dadpass.preferredTtl');
+        if (savedTtl && TTL_OPTIONS.some((opt) => opt.value === savedTtl)) {
+            setTtlOption(savedTtl);
+        }
+    }, []);
+
     const charCount = message.length;
     const isOverLimit = charCount > MAX_CHARS;
     const isNearLimit = charCount > MAX_CHARS * 0.9;
@@ -38,6 +46,7 @@ export function CreateMessage() {
         try {
             const response = await createMessage(message, ttlOption);
             setMessageKey(response.messageKey);
+            localStorage.setItem('dadpass.preferredTtl', ttlOption);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Something went wrong. Please try again.';
             showToast('error', errorMessage);
@@ -49,7 +58,6 @@ export function CreateMessage() {
     const handleNewMessage = () => {
         setMessage('');
         setMessageKey(null);
-        setTtlOption('1day');
     };
 
     const shareLink = messageKey ? `${SITE_URL}/${messageKey}` : '';
@@ -150,7 +158,7 @@ export function CreateMessage() {
             </div>
 
             <footer className="create-message__footer">
-                (Created by a dad who was tired of his kids asking for the Netflix password in plain text)
+                (Created by a dad who was tired of his kids asking him to send passwords in plain text)
             </footer>
         </div>
     );
