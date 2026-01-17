@@ -126,8 +126,10 @@ This will:
 
 ```bash
 cd frontend
-make build  # Build the React app
-make deploy # Deploy to S3 and CloudFront
+pnpm install     # Install dependencies
+pnpm build       # Build the React app
+pnpm deploy      # Deploy to S3 and CloudFront
+pnpm update-stack # Update CloudFormation stack (if needed)
 ```
 
 ### Manual Deployment
@@ -165,6 +167,13 @@ cd backend
 python run_local.py
 ```
 
+### View Logs
+
+```bash
+cd backend
+make tail
+```
+
 ### Frontend Local Development
 
 Run the frontend dev server:
@@ -173,20 +182,6 @@ Run the frontend dev server:
 cd frontend
 pnpm install  # Install dependencies
 pnpm dev      # Start dev server at http://localhost:5173
-```
-
-### Integration Tests
-
-```bash
-cd backend
-make test-integration
-```
-
-### View Logs
-
-```bash
-cd backend
-make tail
 ```
 
 ## Configuration
@@ -239,9 +234,8 @@ dad-pass/
 
 ## Security Considerations
 
--   Messages are stored in DynamoDB with encryption at rest
--   TTL-based automatic expiration for unread messages
--   VPC configuration restricts Lambda network access
+-   Messages are stored in DynamoDB with unencrypted
+-   TTL-based automatic expiration for all messages
 -   API Gateway uses IAM permissions for Lambda invocation
 -   CloudWatch logging enabled for audit trails
 -   One-time message retrieval prevents replay attacks
@@ -250,8 +244,6 @@ dad-pass/
 
 -   [ ] Message encryption at rest with client-side encryption
 -   [ ] Containerized version (Docker/ECS)
--   [ ] Optional password protection for messages
--   [ ] Configurable expiration times
 
 ## Cost Estimate
 
@@ -259,7 +251,10 @@ Running on AWS Free Tier should keep this nearly free:
 
 -   **Lambda**: First 1M requests/month free
 -   **API Gateway**: First 1M requests/month free
+-   **DynamoDB**: 25GB storage free, 25 read/write capacity units free
 -   **CloudWatch Logs**: 5GB ingestion free
+-   **S3**: 5GB storage free, 20,000 GET requests free
+-   **CloudFront**: 1TB data transfer out free (for first 12 months)
 
 For typical family use (dozens of password shares per month), expect costs under $1/month.
 
