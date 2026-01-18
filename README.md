@@ -8,7 +8,6 @@ DadPass allows you to share sensitive information (like passwords) securely by:
 
 -   Creating a temporary, one-time-use link to share a message
 -   Auto-destroying the message after it's been retrieved once
--   Using a simple REST API that can be accessed from anywhere
 
 Perfect for those "Dad, what's the WiFi password?" moments without sending credentials in plain text over messaging apps.
 
@@ -32,9 +31,12 @@ This is a serverless application built on AWS using:
 
 -   Backend API with persistent DynamoDB storage
 -   One-time message retrieval with automatic deletion
--   TTL-based message expiration
+-   Configurable TTL-based message expiration (15 minutes, 1 hour, 1 day, 5 days)
+-   **Server-side encryption at rest** using Fernet symmetric encryption
+-   Encryption keys stored securely in AWS SSM Parameter Store
 -   React/TypeScript frontend with Vite
 -   Message creation and retrieval UI with copy-to-clipboard
+-   Character limit (256 characters) with visual feedback
 -   Toast notifications and loading states
 -   Responsive design with modern CSS
 
@@ -48,9 +50,19 @@ Creates a new temporary message and returns a unique key.
 
 ```json
 {
-    "message": "The Netflix password is hunter2"
+    "message": "The Netflix password is hunter2",
+    "ttlOption": "1day"
 }
 ```
+
+Optional `ttlOption` values:
+
+-   `15min` - Message expires in 15 minutes
+-   `1hour` - Message expires in 1 hour
+-   `1day` - Message expires in 1 day (default)
+-   `5days` - Message expires in 5 days
+
+**Note:** Messages are limited to 256 characters.
 
 **Response:**
 
@@ -79,7 +91,7 @@ After retrieval, the message is permanently deleted.
 -   AWS Account with appropriate permissions
 -   AWS CLI configured with credentials
 -   AWS SAM CLI installed
--   Python 3.12
+-   Python 3.14
 -   An S3 bucket for deployment artifacts
 
 ## Setup & Deployment
@@ -95,13 +107,13 @@ export STAGE=dev  # or prod, staging, local
 The deployment expects an S3 bucket named:
 
 ```
-dad-pass-{STAGE}-lambda-artifacts-us-east-2
+<your-service-name>-{STAGE}-lambda-artifacts-us-east-2
 ```
 
 Create it if it doesn't exist:
 
 ```bash
-aws s3 mb s3://dad-pass-dev-lambda-artifacts-us-east-2 --region us-east-2
+aws s3 mb s3://<your-service-name>-dev-lambda-artifacts-us-east-2 --region us-east-2
 ```
 
 ### 3. Build and Deploy
@@ -160,7 +172,7 @@ sam deploy \
 
 ### Backend Local Testing
 
-Run the Lambda locally:
+Run the Lambda code locally:
 
 ```bash
 cd backend
@@ -191,7 +203,7 @@ Key configuration in [template.yaml](backend/template.yaml):
 -   **Runtime**: Python 3.14
 -   **Timeout**: 35 seconds
 -   **Memory**: 128 MB
--   **VPC**: Configured to use existing security groups and subnets (via SSM parameters)
+-   **Encryption**: Fernet symmetric encryption with master key stored in SSM Parameter Store
 
 Environment-specific settings:
 
@@ -234,15 +246,16 @@ dad-pass/
 
 ## Security Considerations
 
--   Messages are stored in DynamoDB with unencrypted
--   TTL-based automatic expiration for all messages
+-   **Messages are encrypted at rest** using Fernet symmetric encryption (cryptography library)
+-   Encryption keys stored securely in AWS Systems Manager Parameter Store (encrypted SecureString)
+-   TTL-based automatic expiration for all messages (configurable: 15min, 1hour, 1day, 5days)
 -   API Gateway uses IAM permissions for Lambda invocation
 -   CloudWatch logging enabled for audit trails
 -   One-time message retrieval prevents replay attacks
+-   256 character limit on messages
 
 ## Future Enhancements
 
--   [ ] Message encryption at rest with client-side encryption
 -   [ ] Containerized version (Docker/ECS)
 
 ## Cost Estimate
@@ -256,7 +269,7 @@ Running on AWS Free Tier should keep this nearly free:
 -   **S3**: 5GB storage free, 20,000 GET requests free
 -   **CloudFront**: 1TB data transfer out free (for first 12 months)
 
-For typical family use (dozens of password shares per month), expect costs under $1/month.
+DadPass scales to zero so if it's not used it doesn't cost anything to run. Even if it's used hundreds of times a month it will be free or almost free to run.
 
 ## License
 
@@ -268,4 +281,4 @@ This is primarily a personal project, but suggestions and improvements are welco
 
 ## Questions?
 
-Built with ❤️ by a dad tired of sending passwords over text.
+Built with ❤️ by a dad tired telling his kids to call him if they need a password. There are better reasons to call, and better ways to send a password.
