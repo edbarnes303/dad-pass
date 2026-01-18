@@ -281,4 +281,4 @@ This is primarily a personal project, but suggestions and improvements are welco
 
 ## Questions?
 
-Built with ❤️ by a dad tired telling his kids to call him if they need a password. There are better reasons to call, and better ways to send a password.
+Built with ❤️ by a dad tired of telling his kids to call him if they need a password. There are better reasons to call, and better ways to send a password.
