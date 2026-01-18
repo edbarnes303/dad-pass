@@ -158,7 +158,17 @@ export function CreateMessage() {
             </div>
 
             <footer className="create-message__footer">
-                (Created by a dad who was tired of his kids asking him to send passwords in plain text)
+                (Created by a dad who was tired of his kids asking him to send passwords in plain text. All are welcome
+                to use, but if you'd be more comfortable running your own instance, the code is available here:{' '}
+                <a
+                    href="https://github.com/edbarnes303/dad-pass"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="create-message__footer-link"
+                >
+                    https://github.com/edbarnes303/dad-pass
+                </a>
+                )
             </footer>
         </div>
     );

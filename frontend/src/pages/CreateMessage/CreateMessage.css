@@ -70,7 +70,7 @@
 /* Success state - link display */
 .create-message__success {
     margin-top: var(--space-lg);
-    padding: var(--space-lg);
+    padding: var(--space-md);
     background-color: var(--color-success-light);
     border-radius: var(--radius-md);
     text-align: center;
@@ -97,7 +97,7 @@
 
 .create-message__link {
     width: 100%;
-    padding: var(--space-md) var(--space-sm);
+    padding: var(--space-sm) var(--space-xs);
     background-color: var(--color-bg-card);
     border: 2px dashed var(--color-border);
     border-radius: var(--radius-md);
@@ -108,7 +108,6 @@
     user-select: all;
     cursor: text;
     color: var(--color-text);
-    text-align: center;
 }
 
 .create-message__new-button {
@@ -123,6 +122,16 @@
     color: var(--color-text-muted);
     font-style: italic;
     max-width: var(--max-width-content);
+}
+
+.create-message__footer-link {
+    color: inherit;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+.create-message__footer-link:hover {
+    text-decoration-style: solid;
 }
 
 /* Responsive */
@@ -145,5 +154,6 @@
     .create-message__link {
         font-size: var(--font-size-sm); /* 14px on larger screens */
         padding: var(--space-md); /* 16px padding on larger screens */
+        text-align: center; /* Re-center on larger screens where space is not an issue */
     }
 }

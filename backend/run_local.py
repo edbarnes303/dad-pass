@@ -1,3 +1,4 @@
+# This file creates a simple sandbox for iterating on and debugging lambda functions locally
 
 import json
 import sys

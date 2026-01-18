@@ -9,6 +9,7 @@ from botocore.exceptions import ClientError
 import os
 import time
 from decimal import Decimal
+from utils import encrypt_message, decrypt_message
 
 log: Logger = Logger()
 Logger("botocore").setLevel(logging.INFO)
@@ -59,9 +60,12 @@ def get_message(message_key) -> dict:
         # Delete message after retrieval (one-time access)
         table.delete_item(Key={'messageKey': message_key})
         
-        # Return the message data (excluding internal fields)
-        message_data = {k: v for k, v in item.items() if k not in ['messageKey', 'ttl']}
-        return message_data
+        # Decrypt the message
+        encrypted_message = item.get('encryptedMessage', '')
+        decrypted_message = decrypt_message(encrypted_message)
+        
+        # Return the decrypted message (maintaining API contract)
+        return {'message': decrypted_message, 'ttlOption': item.get('ttlOption', '5days')}
         
     except Exception as e:
         log.error(f"Error retrieving message: {str(e)}")
@@ -80,11 +84,15 @@ def create_message() -> dict:
         ttl_duration = TTL_OPTIONS.get(ttl_option, TTL_OPTIONS['5days'])
         ttl_timestamp = int(time.time()) + ttl_duration
         
-        # Prepare item for DynamoDB
+        # Encrypt the message before storing
+        encrypted_message = encrypt_message(message_in['message'])
+        
+        # Prepare item for DynamoDB (store encrypted message)
         item = {
             'messageKey': message_key,
             'ttl': ttl_timestamp,
-            **message_in
+            'encryptedMessage': encrypted_message,
+            'ttlOption': ttl_option
         }
         
         # Store in DynamoDB with condition to prevent overwriting existing key

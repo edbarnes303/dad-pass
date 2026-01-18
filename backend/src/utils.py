@@ -3,48 +3,81 @@ import json
 import re
 from aws_lambda_powertools import Logger
 from typing import Any, Dict, Tuple, Callable, Optional
+import boto3
+import base64
+from cryptography.fernet import Fernet
 
 log = Logger()
 
 #
-# Utility functions
+# Encryption utilities
 #
 
-def to_snake(name):
-    s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', name)
-    return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
+def _load_master_key_from_ssm() -> bytes:
+    """
+    Retrieves the master encryption key from AWS SSM Parameter Store.
+    This is called once at module import time (Lambda container initialization).
+    
+    Returns:
+        The master key as bytes, suitable for Fernet encryption
+    """
+    ssm = boto3.client('ssm')
+    parameter_name = '/dad-pass/encryption-key'
+    
+    try:
+        response = ssm.get_parameter(
+            Name=parameter_name,
+            WithDecryption=True  # Decrypt SecureString parameter
+        )
+        key_string = response['Parameter']['Value']
+        log.info(f"Master encryption key loaded from SSM: {parameter_name}")
+        return key_string.encode('utf-8')
+    except Exception as e:
+        log.error(f"Failed to retrieve encryption key from SSM: {str(e)}")
+        raise
 
+# Load the master key once at module import time (Lambda cold start only)
+_MASTER_KEY = _load_master_key_from_ssm()
 
-def to_camel(name):
-    components = name.split('_')
-    # We capitalize the first letter of each component except the first one
-    # with the 'title' method and join them together.
-    return components[0] + ''.join(x.title() for x in components[1:])
+def encrypt_message(plaintext: str) -> str:
+    """
+    Encrypts a plaintext message using Fernet symmetric encryption.
+    
+    Args:
+        plaintext: The message text to encrypt
+    
+    Returns:
+        Base64-encoded encrypted message (URL-safe)
+    """
+    try:
+        fernet = Fernet(_MASTER_KEY)
+        encrypted_bytes = fernet.encrypt(plaintext.encode('utf-8'))
+        return encrypted_bytes.decode('utf-8')  # Fernet already returns base64-encoded
+    except Exception as e:
+        log.error(f"Encryption failed: {str(e)}")
+        raise
 
+def decrypt_message(ciphertext: str) -> str:
+    """
+    Decrypts an encrypted message using Fernet symmetric encryption.
+    
+    Args:
+        ciphertext: Base64-encoded encrypted message
+    
+    Returns:
+        Decrypted plaintext message
+    """
+    try:
+        fernet = Fernet(_MASTER_KEY)
+        decrypted_bytes = fernet.decrypt(ciphertext.encode('utf-8'))
+        return decrypted_bytes.decode('utf-8')
+    except Exception as e:
+        log.error(f"Decryption failed: {str(e)}")
+        raise
 
-def camelfy(dict_or_list):
-    if dict_or_list == None:
-        return None
-    if isinstance(dict_or_list, dict):
-        return camelfy_object(dict_or_list)
-    elif isinstance(dict_or_list, list):
-        new_list = []
-        for item in dict_or_list:
-            new_list.append(camelfy_object(item))
-
-        return new_list
-    else:
-        raise Exception("camelfy could not parse type " + str(type(dict_or_list)))
-
-
-def camelfy_object(object: dict) -> dict:
-    new_object_dict = {}
-    for key in object.keys():
-        if isinstance(object[key], datetime) or isinstance(object[key], date):
-            new_object_dict[to_camel(key)] = str(object[key])
-        else:
-            new_object_dict[to_camel(key)] = object[key]
-    return new_object_dict
+#
+# Utility functions
+#
 
 
 def create_rest_event(method: str, path: str, body: Optional[dict] = None) -> dict:

@@ -17,6 +17,7 @@ endif
 # on an existing deployed stack
 SERVICE_PATH=dad-pass
 FUNCTION=$(SERVICE_PATH)-service
+MESSAGES_TABLE_NAME=$(FUNCTION)-messages-$(STAGE)
 DESCRIPTION="Service for $(SERVICE_PATH) data"
 REGION=us-east-2
 AWS_PAGER=
@@ -48,7 +49,7 @@ package: build
 	--s3-bucket $(S3_BUCKET) \
 	--output-template-file "package.$(STAGE).yaml"
 
-deploy: print-stage package build
+deploy: print-stage package
 	sam deploy \
 	--no-fail-on-empty-changeset \
 	--template-file "package.$(STAGE).yaml" \
@@ -57,12 +58,19 @@ deploy: print-stage package build
 	--region $(REGION) \
 	--parameter-overrides StageName=$(STAGE) ServiceName=$(FUNCTION) ServicePath=$(SERVICE_PATH)
 
+deploy-ci: test-unit deploy-no-tests
+	$(MAKE) test-integration
+
 invoke:
 	aws lambda invoke --invocation-type RequestResponse --function-name $(FUNCTION)-$(STAGE) --payload '{"route": "set_message", "args": {"message": "Hello, World!"}}' --cli-binary-format raw-in-base64-out /dev/stdout
 
 # Run a custom event locally and see it's entire output. Good for iterating fast on your local machine.
+# Use this as a refernce for how to run and debug the lambda code locally in your IDE.
 run-local:
-	python run_local.py SET_MESSAGE
+	python run_local.py CREATE_MESSAGE
+
+test-unit:
+	pytest -v tests/unit
 
 test-integration:
 	pytest -v tests/integration

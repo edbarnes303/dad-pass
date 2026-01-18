@@ -76,6 +76,10 @@ Resources:
                             - dynamodb:Query
                             - dynamodb:Scan
                         Resource: !GetAtt MessagesTable.Arn
+                      - Effect: Allow
+                        Action:
+                            - ssm:GetParameter
+                        Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dad-pass/encryption-key'
 
             Environment:
                 Variables:
