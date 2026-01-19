@@ -17,7 +17,7 @@ Perfect for those "Dad, what's the WiFi password?" moments without sending crede
 
 This is a serverless application built on AWS using:
 
--   **AWS Lambda** (Python 3.12) - Backend logic
+-   **AWS Lambda** (Python 3.14) - Backend logic
 -   **API Gateway** (HTTP API) - REST endpoints
 -   **DynamoDB** - Persistent message storage with TTL-based expiration
 -   **AWS SAM** (Serverless Application Model) - Infrastructure as Code
