@@ -6,8 +6,8 @@ DadPass is a simple cheap (almost free) to run service I built because my kids k
 
 DadPass includes two backend implementations:
 
-1. **Serverless Backend** (`/serverless-backend`) - AWS Lambda-based serverless architecture with API Gateway and DynamoDB
-2. **Container Backend** (`/container-backend`) - Flask-based containerized application that can be deployed with Docker/ECS/EKS
+1. **Serverless Backend** (`/backend-serverless`) - AWS Lambda-based serverless architecture with API Gateway and DynamoDB
+2. **Container Backend** (`/backend-container`) - Flask-based containerized application that can be deployed with Docker/ECS/EKS
 
 Both backends implement the same API and share the same DynamoDB tables for storage. Choose the option that best fits your infrastructure preferences.
 
@@ -142,7 +142,7 @@ aws s3 mb s3://<your-service-name>-dev-lambda-artifacts-us-east-2 --region us-ea
 Using the Makefile:
 
 ```bash
-cd serverless-backend
+cd backend-serverless
 make deploy
 ```
 
@@ -155,7 +155,7 @@ This will:
 
 #### Container Backend Deployment
 
-See the [container-backend/README.md](container-backend/README.md) for detailed deployment instructions using Docker Compose or container orchestration platforms.
+See the [backend-container/README.md](backend-container/README.md) for detailed deployment instructions using Docker Compose or container orchestration platforms.
 
 #### Frontend Deployment
 
@@ -172,7 +172,7 @@ pnpm update-stack # Update CloudFormation stack (if needed)
 If you prefer not to use Make:
 
 ```bash
-cd serverless-backend
+cd backend-serverless
 
 # Build
 sam build
@@ -198,7 +198,7 @@ sam deploy \
 Run the Lambda code locally:
 
 ```bash
-cd serverless-backend
+cd backend-serverless
 python run_local.py
 ```
 
@@ -207,7 +207,7 @@ python run_local.py
 Run the Flask app locally with Docker Compose:
 
 ```bash
-cd container-backend
+cd backend-container
 make run
 ```
 
@@ -216,14 +216,14 @@ make run
 For serverless backend:
 
 ```bash
-cd serverless-backend
+cd backend-serverless
 make tail
 ```
 
 For container backend:
 
 ```bash
-cd container-backend
+cd backend-container
 make logs
 ```
 
@@ -241,7 +241,7 @@ pnpm dev      # Start dev server at http://localhost:5173
 
 ### Serverless Backend
 
-Key configuration in [template.yaml](serverless-backend/template.yaml):
+Key configuration in [template.yaml](backend-serverless/template.yaml):
 
 - **Runtime**: Python 3.14
 - **Timeout**: 35 seconds
@@ -255,7 +255,7 @@ Environment-specific settings:
 
 ### Container Backend
 
-Key configuration in [compose.yml](container-backend/compose.yml) and environment variables:
+Key configuration in [compose.yml](backend-container/compose.yml) and environment variables:
 
 - **Runtime**: Python 3.14 (Flask)
 - **Port**: 5001 (configurable)
@@ -266,7 +266,7 @@ Key configuration in [compose.yml](container-backend/compose.yml) and environmen
 
 ```
 dad-pass/
-├── serverless-backend/
+├── backend-serverless/
 │   ├── src/
 │   │   ├── lambda_function.py  # Main Lambda handler
 │   │   ├── utils.py            # Utility functions
@@ -276,7 +276,7 @@ dad-pass/
 │   ├── template.yaml           # SAM template
 │   ├── Makefile                # Build/deploy commands
 │   └── run_local.py            # Local testing script
-├── container-backend/
+├── backend-container/
 │   ├── app/
 │   │   ├── app.py              # Flask application
 │   │   ├── Dockerfile          # Container image definition
