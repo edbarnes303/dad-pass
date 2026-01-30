@@ -325,7 +325,7 @@ Both backend implementations are complete. Future enhancements could include:
 - [ ] Custom message expiration times
 - [ ] Message view count tracking
 
-## Cost Estimate
+## Serverless Cost Estimate
 
 Running on AWS Free Tier should keep this nearly free:
 
