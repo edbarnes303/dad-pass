@@ -1,0 +1,63 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECR Repository for dad-pass backend container
+
+Parameters:
+    StageName:
+        Type: String
+        Default: dev
+        AllowedValues:
+            - dev
+            - staging
+            - prod
+        Description: Deployment stage
+
+Resources:
+    ECRRepository:
+        Type: AWS::ECR::Repository
+        Properties:
+            RepositoryName: !Sub 'dad-pass-backend-${StageName}'
+            ImageScanningConfiguration:
+                ScanOnPush: true
+            ImageTagMutability: MUTABLE
+            LifecyclePolicy:
+                LifecyclePolicyText: |
+                    {
+                      "rules": [
+                        {
+                          "rulePriority": 1,
+                          "description": "Keep last 10 images",
+                          "selection": {
+                            "tagStatus": "any",
+                            "countType": "imageCountMoreThan",
+                            "countNumber": 10
+                          },
+                          "action": {
+                            "type": "expire"
+                          }
+                        }
+                      ]
+                    }
+            Tags:
+                - Key: Project
+                  Value: dad-pass
+                - Key: Stage
+                  Value: !Ref StageName
+
+Outputs:
+    RepositoryUri:
+        Description: ECR Repository URI
+        Value: !GetAtt ECRRepository.RepositoryUri
+        Export:
+            Name: !Sub '${AWS::StackName}-RepositoryUri'
+
+    RepositoryArn:
+        Description: ECR Repository ARN
+        Value: !GetAtt ECRRepository.Arn
+        Export:
+            Name: !Sub '${AWS::StackName}-RepositoryArn'
+
+    RepositoryName:
+        Description: ECR Repository Name
+        Value: !Ref ECRRepository
+        Export:
+            Name: !Sub '${AWS::StackName}-RepositoryName'

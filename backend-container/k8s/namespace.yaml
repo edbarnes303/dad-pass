@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+    name: dad-pass
+    labels:
+        app: dad-pass
+        name: dad-pass

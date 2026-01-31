@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: dad-pass
+    namespace: dad-pass
+    labels:
+        app: dad-pass
+spec:
+    replicas: 2
+    selector:
+        matchLabels:
+            app: dad-pass
+    template:
+        metadata:
+            labels:
+                app: dad-pass
+        spec:
+            serviceAccountName: dad-pass-sa
+            containers:
+                - name: dad-pass
+                  # Replace with actual ECR URI from CloudFormation output
+                  image: 'REPLACE_WITH_ECR_URI:latest'
+                  imagePullPolicy: Always
+                  ports:
+                      - containerPort: 8000
+                        protocol: TCP
+                  env:
+                      - name: AWS_REGION
+                        value: 'us-east-2'
+                      - name: MESSAGES_TABLE_NAME
+                        value: 'dad-pass-messages-dev'
+                      - name: PORT
+                        value: '8000'
+                  resources:
+                      requests:
+                          memory: '256Mi'
+                          cpu: '250m'
+                      limits:
+                          memory: '512Mi'
+                          cpu: '500m'
+                  livenessProbe:
+                      httpGet:
+                          path: /
+                          port: 8000
+                      initialDelaySeconds: 15
+                      periodSeconds: 20
+                      timeoutSeconds: 5
+                      failureThreshold: 3
+                  readinessProbe:
+                      httpGet:
+                          path: /
+                          port: 8000
+                      initialDelaySeconds: 5
+                      periodSeconds: 10
+                      timeoutSeconds: 3
+                      failureThreshold: 3
