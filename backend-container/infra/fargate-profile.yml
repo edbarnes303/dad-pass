@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Fargate Profile for dad-pass application
+
+Parameters:
+    StageName:
+        Type: String
+        Default: dev
+        AllowedValues:
+            - dev
+            - staging
+            - prod
+        Description: Deployment stage
+
+    EKSStackName:
+        Type: String
+        Default: shared-eks-dev
+        Description: Name of the EKS cluster CloudFormation stack
+
+Resources:
+    FargateProfile:
+        Type: AWS::EKS::FargateProfile
+        Properties:
+            FargateProfileName: !Sub 'dad-pass-${StageName}'
+            ClusterName:
+                Fn::ImportValue: !Sub '${EKSStackName}-ClusterName'
+            PodExecutionRoleArn:
+                Fn::ImportValue: !Sub '${EKSStackName}-FargatePodExecutionRoleArn'
+            Subnets:
+                - '{{resolve:ssm:/private-subnet-1}}'
+                - '{{resolve:ssm:/private-subnet-2}}'
+                - '{{resolve:ssm:/private-subnet-3}}'
+            Selectors:
+                - Namespace: dad-pass
+            Tags:
+                - Key: Application
+                  Value: dad-pass
+                - Key: Stage
+                  Value: !Ref StageName
+
+Outputs:
+    FargateProfileName:
+        Description: Fargate Profile Name
+        Value: !Ref FargateProfile
+        Export:
+            Name: !Sub '${AWS::StackName}-FargateProfileName'
+
+    FargateProfileArn:
+        Description: Fargate Profile ARN
+        Value: !GetAtt FargateProfile.Arn
+        Export:
+            Name: !Sub '${AWS::StackName}-FargateProfileArn'

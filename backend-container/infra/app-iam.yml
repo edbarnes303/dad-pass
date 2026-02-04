@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: IAM Role for dad-pass application pods (IRSA)
+
+Parameters:
+    StageName:
+        Type: String
+        Default: dev
+        AllowedValues:
+            - dev
+            - staging
+            - prod
+        Description: Deployment stage
+
+    EKSStackName:
+        Type: String
+        Default: shared-eks-dev
+        Description: Name of the EKS cluster CloudFormation stack
+
+    Namespace:
+        Type: String
+        Default: dad-pass
+        Description: Kubernetes namespace for the application
+
+    ServiceAccountName:
+        Type: String
+        Default: dad-pass-sa
+        Description: Kubernetes service account name
+
+Resources:
+    AppPodRole:
+        Type: AWS::IAM::Role
+        Properties:
+            RoleName: !Sub 'dad-pass-pod-role-${StageName}'
+            AssumeRolePolicyDocument:
+                Fn::Sub:
+                    - |
+                        {
+                          "Version": "2012-10-17",
+                          "Statement": [
+                            {
+                              "Effect": "Allow",
+                              "Principal": {
+                                "Federated": "arn:aws:iam::${AWS::AccountId}:oidc-provider/${OidcHost}"
+                              },
+                              "Action": "sts:AssumeRoleWithWebIdentity",
+                              "Condition": {
+                                "StringEquals": {
+                                  "${OidcHost}:sub": "system:serviceaccount:${Namespace}:${ServiceAccountName}",
+                                  "${OidcHost}:aud": "sts.amazonaws.com"
+                                }
+                              }
+                            }
+                          ]
+                        }
+                    - OidcHost:
+                          Fn::ImportValue: !Sub '${EKSStackName}-OIDCProviderHost'
+            Policies:
+                - PolicyName: DadPassAppPolicy
+                  PolicyDocument:
+                      Version: '2012-10-17'
+                      Statement:
+                          # DynamoDB Access
+                          - Effect: Allow
+                            Action:
+                                - dynamodb:GetItem
+                                - dynamodb:PutItem
+                                - dynamodb:DeleteItem
+                                - dynamodb:Query
+                                - dynamodb:Scan
+                            Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/dad-pass-service-messages-prod' # TODO: use ${StageName} when dev table exists
+                          # SSM Parameter Store (encryption key)
+                          - Effect: Allow
+                            Action:
+                                - ssm:GetParameter
+                            Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/dad-pass/encryption-key'
+            Tags:
+                - Key: Application
+                  Value: dad-pass
+                - Key: Stage
+                  Value: !Ref StageName
+
+Outputs:
+    AppPodRoleArn:
+        Description: IAM Role ARN for app pods
+        Value: !GetAtt AppPodRole.Arn
+        Export:
+            Name: !Sub '${AWS::StackName}-AppPodRoleArn'
+
+    AppPodRoleName:
+        Description: IAM Role Name for app pods
+        Value: !Ref AppPodRole
+        Export:
+            Name: !Sub '${AWS::StackName}-AppPodRoleName'

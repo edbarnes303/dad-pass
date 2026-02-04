@@ -6,30 +6,41 @@ CONTAINER_SERVICE_URL ?= http://localhost:5001
 PORT ?= 5001
 PYTHONPATH := $(shell pwd)/src:$(PYTHONPATH)
 
-# AWS/EKS Configuration
+# AWS Configuration
 AWS_REGION ?= us-east-2
 STAGE ?= dev
-CLUSTER_NAME ?= dad-pass-cluster-$(STAGE)
+
+# Shared EKS Cluster Configuration
+CLUSTER_NAME ?= shared-eks
+EKS_STACK_NAME ?= $(CLUSTER_NAME)-$(STAGE)
+
+# App-specific Configuration
 ECR_STACK_NAME ?= dad-pass-ecr-$(STAGE)
-EKS_STACK_NAME ?= dad-pass-eks-$(STAGE)
+FARGATE_STACK_NAME ?= dad-pass-fargate-$(STAGE)
+IAM_STACK_NAME ?= dad-pass-iam-$(STAGE)
 
 # Docker/ECR Configuration
 AWS_ACCOUNT_ID := $(shell aws sts get-caller-identity --query Account --output text 2>/dev/null)
 ECR_REGISTRY := $(AWS_ACCOUNT_ID).dkr.ecr.$(AWS_REGION).amazonaws.com
-ECR_REPO_NAME := dad-pass-backend-$(STAGE)
+ECR_REPO_NAME := dad-pass-$(STAGE)
 IMAGE_TAG ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "latest")
 IMAGE_URI := $(ECR_REGISTRY)/$(ECR_REPO_NAME):$(IMAGE_TAG)
 
 .EXPORT_ALL_VARIABLES:
 
 .PHONY: help install test test-unit test-integration run clean \
-        deploy-ecr deploy-eks deploy-infra \
+        deploy-ecr deploy-fargate deploy-iam deploy-app-infra \
         ecr-login docker-build docker-push docker-deploy \
         k8s-configure k8s-deploy k8s-rollout k8s-status k8s-logs \
-        install-alb-controller get-alb-url
+        get-alb-url full-deploy
 
 help:
-	@echo "Available commands:"
+	@echo "Dad-Pass Container Backend"
+	@echo ""
+	@echo "Configuration:"
+	@echo "  CLUSTER_NAME=$(CLUSTER_NAME)"
+	@echo "  STAGE=$(STAGE)"
+	@echo "  AWS_REGION=$(AWS_REGION)"
 	@echo ""
 	@echo "Development:"
 	@echo "  make install              - Install dependencies"
@@ -39,10 +50,11 @@ help:
 	@echo "  make run                  - Run the Flask development server"
 	@echo "  make clean                - Clean up cache files"
 	@echo ""
-	@echo "Infrastructure (CloudFormation):"
-	@echo "  make deploy-ecr           - Deploy ECR repository stack"
-	@echo "  make deploy-eks           - Deploy EKS cluster stack"
-	@echo "  make deploy-infra         - Deploy all infrastructure (ECR + EKS)"
+	@echo "App Infrastructure (CloudFormation):"
+	@echo "  make deploy-ecr           - Deploy ECR repository"
+	@echo "  make deploy-fargate       - Deploy Fargate profile"
+	@echo "  make deploy-iam           - Deploy app IAM role (IRSA)"
+	@echo "  make deploy-app-infra     - Deploy all app infrastructure"
 	@echo ""
 	@echo "Docker/ECR:"
 	@echo "  make ecr-login            - Authenticate Docker to ECR"
@@ -52,7 +64,6 @@ help:
 	@echo ""
 	@echo "Kubernetes:"
 	@echo "  make k8s-configure        - Configure kubectl for EKS cluster"
-	@echo "  make install-alb-controller - Install AWS Load Balancer Controller"
 	@echo "  make k8s-deploy           - Deploy application to Kubernetes"
 	@echo "  make k8s-rollout          - Trigger rolling restart of deployment"
 	@echo "  make k8s-status           - Show deployment status"
@@ -60,7 +71,13 @@ help:
 	@echo "  make get-alb-url          - Get the ALB URL"
 	@echo ""
 	@echo "Full Deployment:"
-	@echo "  make full-deploy          - Complete deployment (infra + app)"
+	@echo "  make full-deploy          - Complete app deployment"
+	@echo ""
+	@echo "Note: EKS cluster must be deployed first using ../infra/Makefile"
+
+#############################################
+# Development
+#############################################
 
 install:
 	pip install -r app/requirements.txt
@@ -82,37 +99,6 @@ clean:
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	find . -type d -name ".pytest_cache" -exec rm -rf {} + 2>/dev/null || true
 
-#############################################
-# Infrastructure Deployment
-#############################################
-
-deploy-ecr:
-	@echo "Deploying ECR repository..."
-	aws cloudformation deploy \
-		--template-file infra/ecr.yml \
-		--stack-name $(ECR_STACK_NAME) \
-		--parameter-overrides StageName=$(STAGE) \
-		--capabilities CAPABILITY_NAMED_IAM \
-		--region $(AWS_REGION)
-	@echo "ECR Repository URI:"
-	@aws cloudformation describe-stacks \
-		--stack-name $(ECR_STACK_NAME) \
-		--query 'Stacks[0].Outputs[?OutputKey==`RepositoryUri`].OutputValue' \
-		--output text \
-		--region $(AWS_REGION)
-
-deploy-eks:
-	@echo "Deploying EKS cluster (this may take 15-20 minutes)..."
-	aws cloudformation deploy \
-		--template-file infra/eks-cluster.yml \
-		--stack-name $(EKS_STACK_NAME) \
-		--parameter-overrides StageName=$(STAGE) \
-		--capabilities CAPABILITY_NAMED_IAM \
-		--region $(AWS_REGION)
-	@echo "EKS Cluster deployed. Run 'make k8s-configure' to configure kubectl."
-
-deploy-infra: deploy-ecr deploy-eks
-	@echo "All infrastructure deployed successfully!"
 
 #############################################
 # Docker/ECR Commands
@@ -125,7 +111,7 @@ ecr-login:
 
 docker-build:
 	@echo "Building Docker image: $(IMAGE_URI)"
-	docker build -t $(ECR_REPO_NAME):$(IMAGE_TAG) -t $(ECR_REPO_NAME):latest ./app
+	docker build --platform linux/amd64 -t $(ECR_REPO_NAME):$(IMAGE_TAG) -t $(ECR_REPO_NAME):latest ./app
 	docker tag $(ECR_REPO_NAME):$(IMAGE_TAG) $(IMAGE_URI)
 	docker tag $(ECR_REPO_NAME):latest $(ECR_REGISTRY)/$(ECR_REPO_NAME):latest
 
@@ -137,31 +123,70 @@ docker-push: ecr-login
 docker-deploy: docker-build docker-push
 	@echo "Docker image built and pushed: $(IMAGE_URI)"
 
+
+#############################################
+# App Infrastructure Deployment
+#############################################
+
+deploy-ecr:
+	@echo "Deploying ECR repository for dad-pass..."
+	aws cloudformation deploy \
+		--template-file infra/ecr.yml \
+		--stack-name $(ECR_STACK_NAME) \
+		--parameter-overrides \
+			StageName=$(STAGE) \
+		--capabilities CAPABILITY_NAMED_IAM \
+		--region $(AWS_REGION)
+	@echo "ECR Repository URI:"
+	@aws cloudformation describe-stacks \
+		--stack-name $(ECR_STACK_NAME) \
+		--query 'Stacks[0].Outputs[?OutputKey==`RepositoryUri`].OutputValue' \
+		--output text \
+		--region $(AWS_REGION)
+
+deploy-fargate:
+	@echo "Deploying Fargate profile for dad-pass..."
+	aws cloudformation deploy \
+		--template-file infra/fargate-profile.yml \
+		--stack-name $(FARGATE_STACK_NAME) \
+		--parameter-overrides \
+			StageName=$(STAGE) \
+			EKSStackName=$(EKS_STACK_NAME) \
+		--capabilities CAPABILITY_NAMED_IAM \
+		--region $(AWS_REGION)
+	@echo "Fargate profile deployed."
+
+deploy-iam:
+	@echo "Deploying IAM role for dad-pass pods..."
+	aws cloudformation deploy \
+		--template-file infra/app-iam.yml \
+		--stack-name $(IAM_STACK_NAME) \
+		--parameter-overrides \
+			StageName=$(STAGE) \
+			EKSStackName=$(EKS_STACK_NAME) \
+		--capabilities CAPABILITY_NAMED_IAM \
+		--region $(AWS_REGION)
+	@echo "IAM Role ARN:"
+	@aws cloudformation describe-stacks \
+		--stack-name $(IAM_STACK_NAME) \
+		--query 'Stacks[0].Outputs[?OutputKey==`AppPodRoleArn`].OutputValue' \
+		--output text \
+		--region $(AWS_REGION)
+
+deploy-app-infra: deploy-ecr deploy-fargate deploy-iam
+	@echo "All app infrastructure deployed successfully!"
+
+
 #############################################
 # Kubernetes Commands
 #############################################
 
 k8s-configure:
-	@echo "Configuring kubectl for EKS cluster: $(CLUSTER_NAME)"
+	@echo "Configuring kubectl for EKS cluster: $(CLUSTER_NAME)-$(STAGE)"
 	aws eks update-kubeconfig \
-		--name $(CLUSTER_NAME) \
+		--name $(CLUSTER_NAME)-$(STAGE) \
 		--region $(AWS_REGION)
 	kubectl config current-context
-
-install-alb-controller:
-	@echo "Installing AWS Load Balancer Controller..."
-	@# Get the ALB Controller Role ARN from CloudFormation
-	$(eval ALB_ROLE_ARN := $(shell aws cloudformation describe-stacks \
-		--stack-name $(EKS_STACK_NAME) \
-		--query 'Stacks[0].Outputs[?OutputKey==`ALBControllerRoleArn`].OutputValue' \
-		--output text \
-		--region $(AWS_REGION)))
-	@echo "Using ALB Controller Role ARN: $(ALB_ROLE_ARN)"
-	@# Run the install script
-	CLUSTER_NAME=$(CLUSTER_NAME) \
-	AWS_REGION=$(AWS_REGION) \
-	ALB_ROLE_ARN=$(ALB_ROLE_ARN) \
-	bash k8s/aws-load-balancer-controller/install.sh
 
 k8s-deploy:
 	@echo "Deploying application to Kubernetes..."
@@ -172,7 +197,7 @@ k8s-deploy:
 		--output text \
 		--region $(AWS_REGION)))
 	$(eval APP_ROLE_ARN := $(shell aws cloudformation describe-stacks \
-		--stack-name $(EKS_STACK_NAME) \
+		--stack-name $(IAM_STACK_NAME) \
 		--query 'Stacks[0].Outputs[?OutputKey==`AppPodRoleArn`].OutputValue' \
 		--output text \
 		--region $(AWS_REGION)))
@@ -184,11 +209,13 @@ k8s-deploy:
 	cat k8s/service-account.yaml | \
 		sed 's|REPLACE_WITH_APP_POD_ROLE_ARN|$(APP_ROLE_ARN)|g' | \
 		kubectl apply -f -
-	@# Apply deployment with ECR URI substitution
+	@# Apply deployment with substitutions
 	cat k8s/deployment.yaml | \
 		sed 's|REPLACE_WITH_ECR_URI|$(ECR_URI)|g' | \
-		sed 's|dad-pass-messages-dev|dad-pass-messages-$(STAGE)|g' | \
-		sed 's|us-east-2|$(AWS_REGION)|g' | \
+		sed 's|REPLACE_WITH_IMAGE_TAG|$(IMAGE_TAG)|g' | \
+		sed 's|REPLACE_WITH_TABLE_NAME|dad-pass-service-messages-prod|g' | \
+		sed 's|REPLACE_WITH_AWS_REGION|$(AWS_REGION)|g' | \
+		sed 's|REPLACE_WITH_STAGE|$(STAGE)|g' | \
 		kubectl apply -f -
 	@# Apply service and ingress
 	kubectl apply -f k8s/service.yaml
@@ -227,13 +254,23 @@ get-alb-url:
 	@echo ""
 
 #############################################
-# Full Deployment
+# Deployment
 #############################################
 
-full-deploy: deploy-infra k8s-configure install-alb-controller docker-deploy k8s-deploy
+full-deploy: deploy-app-infra k8s-configure docker-deploy k8s-deploy
 	@echo ""
 	@echo "========================================="
-	@echo "Full deployment complete!"
+	@echo "Dad-pass deployment complete!"
 	@echo "========================================="
 	@echo ""
 	@make get-alb-url
+
+
+# Deploy updated app (build/push image and update k8s deployment)
+deploy-app: docker-deploy k8s-deploy
+	@echo ""
+	@echo "========================================="
+	@echo "App update complete!"
+	@echo "========================================="
+	@echo ""
+

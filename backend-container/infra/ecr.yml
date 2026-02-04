@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: ECR Repository for dad-pass backend container
+Description: ECR Repository for dad-pass application
 
 Parameters:
     StageName:
@@ -11,25 +11,30 @@ Parameters:
             - prod
         Description: Deployment stage
 
+    ImageRetentionCount:
+        Type: Number
+        Default: 10
+        Description: Number of images to retain in the repository
+
 Resources:
     ECRRepository:
         Type: AWS::ECR::Repository
         Properties:
-            RepositoryName: !Sub 'dad-pass-backend-${StageName}'
+            RepositoryName: !Sub 'dad-pass-${StageName}'
             ImageScanningConfiguration:
                 ScanOnPush: true
             ImageTagMutability: MUTABLE
             LifecyclePolicy:
-                LifecyclePolicyText: |
+                LifecyclePolicyText: !Sub |
                     {
                       "rules": [
                         {
                           "rulePriority": 1,
-                          "description": "Keep last 10 images",
+                          "description": "Keep last ${ImageRetentionCount} images",
                           "selection": {
                             "tagStatus": "any",
                             "countType": "imageCountMoreThan",
-                            "countNumber": 10
+                            "countNumber": ${ImageRetentionCount}
                           },
                           "action": {
                             "type": "expire"
@@ -38,7 +43,7 @@ Resources:
                       ]
                     }
             Tags:
-                - Key: Project
+                - Key: Application
                   Value: dad-pass
                 - Key: Stage
                   Value: !Ref StageName

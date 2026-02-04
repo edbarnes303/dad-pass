@@ -19,16 +19,18 @@ spec:
             containers:
                 - name: dad-pass
                   # Replace with actual ECR URI from CloudFormation output
-                  image: 'REPLACE_WITH_ECR_URI:latest'
+                  image: 'REPLACE_WITH_ECR_URI:REPLACE_WITH_IMAGE_TAG'
                   imagePullPolicy: Always
                   ports:
                       - containerPort: 8000
                         protocol: TCP
                   env:
                       - name: AWS_REGION
-                        value: 'us-east-2'
+                        value: 'REPLACE_WITH_AWS_REGION'
                       - name: MESSAGES_TABLE_NAME
-                        value: 'dad-pass-messages-dev'
+                        value: 'REPLACE_WITH_TABLE_NAME'
+                      - name: STAGE
+                        value: 'REPLACE_WITH_STAGE'
                       - name: PORT
                         value: '8000'
                   resources:
