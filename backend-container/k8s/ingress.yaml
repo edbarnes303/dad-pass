@@ -16,14 +16,17 @@ metadata:
         alb.ingress.kubernetes.io/healthy-threshold-count: '2'
         alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
         alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+        # IngressGroup: share a single ALB across apps
+        alb.ingress.kubernetes.io/group.name: shared-apps
+        alb.ingress.kubernetes.io/group.order: '1'
         # Tags for the ALB
-        alb.ingress.kubernetes.io/tags: Project=dad-pass,Environment=dev
+        alb.ingress.kubernetes.io/tags: Project=shared-apps,Environment=dev
 spec:
     ingressClassName: alb
     rules:
         - http:
               paths:
-                  - path: /
+                  - path: /dad-pass
                     pathType: Prefix
                     backend:
                         service:

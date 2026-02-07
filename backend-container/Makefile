@@ -249,8 +249,12 @@ k8s-logs:
 
 get-alb-url:
 	@echo "ALB URL:"
-	@kubectl get ingress dad-pass -n dad-pass -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || \
-		echo "ALB not yet provisioned. Wait a few minutes and try again."
+	@ALB_HOST=$$(kubectl get ingress dad-pass -n dad-pass -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null) && \
+		if [ -n "$$ALB_HOST" ]; then \
+			echo "http://$$ALB_HOST/dad-pass"; \
+		else \
+			echo "ALB not yet provisioned. Wait a few minutes and try again."; \
+		fi
 	@echo ""
 
 #############################################
