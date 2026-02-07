@@ -6,8 +6,8 @@ DadPass is a simple cheap (almost free) to run service I built because my kids k
 
 DadPass includes two backend implementations:
 
-1. **Serverless Backend** (`/backend-serverless`) - AWS Lambda-based serverless architecture with API Gateway and DynamoDB
-2. **Container Backend** (`/backend-container`) - Flask-based containerized application that can be deployed with Docker/ECS/EKS
+1. **Serverless Backend** (`/backend-serverless`) - AWS Lambda-based serverless architecture with API Gateway and DynamoDB (Can be run for free if you don't have a ton of traffic)
+2. **Container Backend** (`/backend-container`) - Flask-based containerized application that can be deployed with Docker/ECS/EKS (Will cost around $200/month to run on EKS even with no traffic)
 
 Both backends implement the same API and share the same DynamoDB tables for storage. Choose the option that best fits your infrastructure preferences.
 
